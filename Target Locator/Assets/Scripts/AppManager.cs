@@ -27,7 +27,7 @@ public class AppManager : Singleton<AppManager>
         // --- Test --- //
         // create grid
         gridController = new GridController();
-        gridController.CreateGrid(new Vector2Int(4, 3));
+        gridController.CreateGrid(new Vector2Int(100, 100));
 
         // set target
         target.Spawn(TargetLocator.GenerateTargetGridPosition(gridController.GridSize));

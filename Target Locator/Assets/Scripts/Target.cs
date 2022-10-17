@@ -30,7 +30,6 @@ public class Target : MonoBehaviour
     public void Spawn(Vector2Int _gridPosition)
     {
         previousGridPosition = _gridPosition;
-        Debug.Log("target previousGridPosition = " + previousGridPosition);
         // set world position
         Vector3 nodeWorldPosition = AppManager.Instance.gridController.GetWorldPosition(_gridPosition);
         transform.position = new Vector3(nodeWorldPosition.x, Y_POSITION, nodeWorldPosition.z);
