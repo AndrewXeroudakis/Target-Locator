@@ -6,19 +6,12 @@ public class Target : MonoBehaviour
 {
     #region Variables
     private static readonly float Y_POSITION = 0.5f;
-    // animation controller
-    // current position on the grid
-
-    // Grid Searching
-    public Vector2Int previousGridPosition;
 
     // States
     public enum State
     {
         Idle,
-        Move,
-        AskForDirection,
-        ReachedTarget
+        GiveDirection
     }
     Coroutine currentStateCoroutine;
     #endregion
@@ -29,7 +22,6 @@ public class Target : MonoBehaviour
     #region Methods
     public void Spawn(Vector2Int _gridPosition)
     {
-        previousGridPosition = _gridPosition;
         // set world position
         Vector3 nodeWorldPosition = AppManager.Instance.gridController.GetWorldPosition(_gridPosition);
         transform.position = new Vector3(nodeWorldPosition.x, Y_POSITION, nodeWorldPosition.z);
@@ -38,7 +30,7 @@ public class Target : MonoBehaviour
         gameObject.SetActive(true);
 
         // set state
-        //ChangeState(State.Idle);
+        ChangeState(State.Idle);
 
         // play spawn vfx
         // play spawn sfx
@@ -53,7 +45,10 @@ public class Target : MonoBehaviour
     {
         // stop current state
         if (currentStateCoroutine != null)
+        {
             StopCoroutine(currentStateCoroutine);
+            currentStateCoroutine = null;
+        }
 
         // start new state
         switch (_state)
@@ -61,39 +56,21 @@ public class Target : MonoBehaviour
             case State.Idle:
                 currentStateCoroutine = StartCoroutine(IdleState());
                 break;
-            case State.Move:
-                currentStateCoroutine = StartCoroutine(MoveState());
-                break;
-            case State.AskForDirection:
-                currentStateCoroutine = StartCoroutine(AskForDirectionState());
-                break;
-            case State.ReachedTarget:
-                currentStateCoroutine = StartCoroutine(ReachedTargetState());
+            case State.GiveDirection:
+                currentStateCoroutine = StartCoroutine(GiveDirectionState());
                 break;
         }
     }
 
     private IEnumerator IdleState()
     {
-        Debug.Log("Idle");
+        Debug.Log("Target Idle");
         yield return new WaitForSeconds(1f);
     }
 
-    private IEnumerator MoveState()
+    private IEnumerator GiveDirectionState()
     {
-        Debug.Log("Move");
-        yield return new WaitForSeconds(1f);
-    }
-
-    private IEnumerator AskForDirectionState()
-    {
-        Debug.Log("AskForDirection");
-        yield return new WaitForSeconds(1f);
-    }
-
-    private IEnumerator ReachedTargetState()
-    {
-        Debug.Log("ReachedTarget");
+        Debug.Log("Target GiveDirection");
         yield return new WaitForSeconds(1f);
     }
     #endregion

@@ -8,22 +8,18 @@ public class Character : Singleton<Character>
     #region Variables
     private static readonly float Y_POSITION = 0.5f;
     // animation controller
-    // current position on the grid
 
     // Grid Searching
-    public Vector2Int previousGridPosition;
     public Vector2Int currentGridPosition;
-    public TargetLocator.Direction currentDirection;
 
     // States
     public enum State
     {
         Idle,
-        Move,
-        AskForDirection,
+        Searching,
         ReachedTarget
     }
-    Coroutine currentStateCoroutine;
+    private Coroutine currentStateCoroutine;
     #endregion
 
     #region Unity Functions
@@ -32,8 +28,7 @@ public class Character : Singleton<Character>
     #region Methods
     public void Spawn(Vector2Int _gridPosition)
     {
-        previousGridPosition = _gridPosition;
-        currentGridPosition = previousGridPosition;
+        currentGridPosition = _gridPosition;
 
         // set world position
         Vector3 nodeWorldPosition = AppManager.Instance.gridController.GetWorldPosition(_gridPosition);
@@ -51,41 +46,20 @@ public class Character : Singleton<Character>
 
     #region Grid Searching 
 
-
-    private Vector2Int GetNextGridPositionToSearch()
+    private Vector2Int GetNextDiagonalGridPosition(Vector2Int _start, int _limitX, int _limitY, Vector2Int _direction)
     {
-        // 1: Get to the middle for any previousGridPosition and direction
-        Vector2Int directionVector = GridController.directionVectors[currentDirection];
-        Vector2Int gridSize = AppManager.Instance.gridController.GridSize;
-
-        int left = previousGridPosition.y;
-        int right = currentGridPosition.y;
-        int mid = Mathf.RoundToInt(left + ((right - left) / 2));
-        Vector2Int nextGridPosition = new Vector2Int(previousGridPosition.x, mid);
-        /*do
+        Vector2Int nextDiagonalGridPosition = _start;
+        List<Vector2Int> diagonalGridPositions = new List<Vector2Int>();
+        diagonalGridPositions.Add(nextDiagonalGridPosition);
+        while (nextDiagonalGridPosition.x != _limitX && nextDiagonalGridPosition.y != _limitY)
         {
-            nextGridPosition += directionVector;
-        } while (*//*nextGridPosition.x > 0 && nextGridPosition.x < edgeX &&*//* nextGridPosition.y > 0 && nextGridPosition.y < edgeY);*/
-        return nextGridPosition;
-        /*Vector2Int nextGridPosition = previousGridPosition;
-        //int edgeX = Mathf.RoundToInt((gridSize.x - 1) / 2);
-        int edgeY = Mathf.RoundToInt((gridSize.y - 1) / 2);
-        do
-        {
-            nextGridPosition += directionVector;
-        } while (*//*nextGridPosition.x > 0 && nextGridPosition.x < edgeX &&*//* nextGridPosition.y > 0 && nextGridPosition.y < edgeY);
-        return nextGridPosition;*/
-
-        /*Debug.Log(" --- GetNextGridPositionToSearch ---");
-        Debug.Log(currentDirection);
-        Vector2Int directionVector = GridController.directionVectors[currentDirection];
-        Debug.Log(directionVector);
-        int x = Mathf.RoundToInt(((AppManager.Instance.gridController.GridSize.x - 1) + (previousGridPosition.x * directionVector.x)) / 2);
-        Debug.Log(x);
-        int y = Mathf.RoundToInt(((AppManager.Instance.gridController.GridSize.y - 1) + (previousGridPosition.y * directionVector.y)) / 2);
-        Debug.Log(y);
-        return new Vector2Int(x, y);*/
+            nextDiagonalGridPosition += _direction;
+            diagonalGridPositions.Add(nextDiagonalGridPosition);
+        }
+        int index = Mathf.RoundToInt(diagonalGridPositions.Count / 2);
+        return diagonalGridPositions[index];
     }
+
     #endregion
 
     #region States
@@ -93,7 +67,10 @@ public class Character : Singleton<Character>
     {
         // stop current state
         if (currentStateCoroutine != null)
+        {
             StopCoroutine(currentStateCoroutine);
+            currentStateCoroutine = null;
+        }
 
         // start new state
         switch (_state)
@@ -101,11 +78,8 @@ public class Character : Singleton<Character>
             case State.Idle:
                 currentStateCoroutine = StartCoroutine(IdleState());
                 break;
-            case State.Move:
-                currentStateCoroutine = StartCoroutine(MoveState());
-                break;
-            case State.AskForDirection:
-                currentStateCoroutine = StartCoroutine(AskForDirectionState());
+            case State.Searching:
+                currentStateCoroutine = StartCoroutine(SearchingState());
                 break;
             case State.ReachedTarget:
                 currentStateCoroutine = StartCoroutine(ReachedTargetState());
@@ -118,11 +92,20 @@ public class Character : Singleton<Character>
         Debug.Log("Idle");
         yield return new WaitForSeconds(3f);
 
-        int checks = 0;
+        // Change State
+        ChangeState(State.Searching);
+    }
+
+    private IEnumerator SearchingState()
+    {
+        Debug.Log("Searching");
+        yield return new WaitForSeconds(1f);
+
+        TargetLocator.Direction currentDirection;
         Vector2Int gridSize = AppManager.Instance.gridController.GridSize;
         Vector2Int min = Vector2Int.zero;
         Vector2Int max = new Vector2Int(gridSize.x - 1, gridSize.y - 1);
-        while (min.x <= max.x && min.y <= max.y && checks < 100)
+        while (min.x <= max.x && min.y <= max.y)
         {
             // Ask for direction
             currentDirection = TargetLocator.GetDirectionToTarget(currentGridPosition);
@@ -150,7 +133,7 @@ public class Character : Singleton<Character>
                     max = currentGridPosition + directionVector;
                     midX = min.x + ((max.x - min.x) / 2);
                 }
-                    
+
                 else if (currentDirection == TargetLocator.Direction.Down)
                 {
                     min = currentGridPosition + directionVector;
@@ -186,9 +169,12 @@ public class Character : Singleton<Character>
                     midX = nextDiagonalGridPosition.x;
                     midY = nextDiagonalGridPosition.y;
                 }
-                currentGridPosition = new Vector2Int(midX, midY);
 
-                // move to that position using DOTween
+                // Drop Nodes
+                AppManager.Instance.gridController.DropExcludedNodes(min, max, AppManager.Instance.gridController.GetWorldPosition(currentGridPosition));
+
+                // Move to the next grid position using DOTween
+                currentGridPosition = new Vector2Int(midX, midY);
                 Vector3 nodeWorldPosition = AppManager.Instance.gridController.GetWorldPosition(currentGridPosition);
                 Vector3 characterWorldPosition = new Vector3(nodeWorldPosition.x, Y_POSITION, nodeWorldPosition.z);
                 float distance = Vector3.Distance(transform.position, characterWorldPosition);
@@ -196,38 +182,14 @@ public class Character : Singleton<Character>
                 transform.DOMove(characterWorldPosition, duration);
 
                 yield return new WaitForSeconds(duration + 1f);
-
-                checks++;
             }
         }
 
-        Debug.Log("Target Reached!");
-    }
+        // Drop Nodes
+        AppManager.Instance.gridController.DropExcludedNodes(currentGridPosition, currentGridPosition, AppManager.Instance.gridController.GetWorldPosition(currentGridPosition));
 
-    private Vector2Int GetNextDiagonalGridPosition(Vector2Int _start, int _limitX, int _limitY, Vector2Int _directionVector)
-    {
-        Vector2Int nextDiagonalGridPosition = _start;
-        List<Vector2Int> diagonalGridPositions = new List<Vector2Int>();
-        diagonalGridPositions.Add(nextDiagonalGridPosition);
-        while (nextDiagonalGridPosition.x != _limitX && nextDiagonalGridPosition.y != _limitY)
-        {
-            nextDiagonalGridPosition += _directionVector;
-            diagonalGridPositions.Add(nextDiagonalGridPosition);
-        }
-        int index = Mathf.RoundToInt(diagonalGridPositions.Count / 2);
-        return diagonalGridPositions[index];
-    }
-
-    private IEnumerator MoveState()
-    {
-        Debug.Log("Move");
-        yield return new WaitForSeconds(1f);
-    }
-
-    private IEnumerator AskForDirectionState()
-    {
-        Debug.Log("AskForDirection");
-        yield return new WaitForSeconds(1f);
+        // Change State
+        ChangeState(State.ReachedTarget);
     }
 
     private IEnumerator ReachedTargetState()
