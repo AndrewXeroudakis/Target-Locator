@@ -1,6 +1,5 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class AppManager : Singleton<AppManager>
 {
@@ -12,6 +11,9 @@ public class AppManager : Singleton<AppManager>
     [SerializeField]
     private GameObject nodePrefab;
     public GameObject NodePrefab { get { return nodePrefab; } private set { nodePrefab = value; } }
+    [SerializeField]
+    private GameObject nodesParent;
+    public GameObject NodesParent { get { return nodesParent; } private set { nodesParent = value; } }
 
     public GridController gridController;
     #endregion
@@ -24,19 +26,39 @@ public class AppManager : Singleton<AppManager>
 
     private void Start()
     {
-        // --- Test --- //
-        // create grid
-        gridController = new GridController();
-        gridController.CreateGrid(new Vector2Int(10, 10));
+        // Display setup screen
+        UIManager.Instance.setupUIController.Display();
+    }
 
-        // set target
-        target.Spawn(TargetLocator.GenerateTargetGridPosition(gridController.GridSize));
-
-        // set character
-        character.Spawn(gridController.GetCharacterStartingGridPosition());
+    private void Update()
+    {
+        if (Input.GetKey(KeyCode.Escape))
+        {
+            Application.Quit();
+        }
     }
     #endregion
 
     #region Methods
+    public void InitializeGridSearch(Vector2Int _gridSize)
+    {
+        // Create grid
+        gridController = new GridController();
+        gridController.CreateGrid(_gridSize);
+
+        // Set target
+        target.Spawn(TargetLocator.GenerateTargetGridPosition(gridController.GridSize));
+
+        // Set character
+        character.Spawn(gridController.GetCharacterStartingGridPosition());
+
+        // Display main screen
+        UIManager.Instance.mainUIController.Display();
+    }
+
+    public void Restart()
+    {
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    }
     #endregion
 }

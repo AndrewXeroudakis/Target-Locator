@@ -7,7 +7,12 @@ public class Character : Singleton<Character>
 {
     #region Variables
     private static readonly float Y_POSITION = 0.5f;
-    // animation controller
+
+    [SerializeField]
+    private GameObject fireworkVFX;
+
+    [SerializeField]
+    private GameObject nextPositionModel;
 
     // Grid Searching
     public Vector2Int currentGridPosition;
@@ -23,6 +28,10 @@ public class Character : Singleton<Character>
     #endregion
 
     #region Unity Functions
+    protected override void Awake()
+    {
+        base.Awake();
+    }
     #endregion
 
     #region Methods
@@ -39,28 +48,7 @@ public class Character : Singleton<Character>
 
         // set state
         ChangeState(State.Idle);
-
-        // play spawn vfx
-        // play spawn sfx
     }
-
-    #region Grid Searching 
-
-    private Vector2Int GetNextDiagonalGridPosition(Vector2Int _start, int _limitX, int _limitY, Vector2Int _direction)
-    {
-        Vector2Int nextDiagonalGridPosition = _start;
-        List<Vector2Int> diagonalGridPositions = new List<Vector2Int>();
-        diagonalGridPositions.Add(nextDiagonalGridPosition);
-        while (nextDiagonalGridPosition.x != _limitX && nextDiagonalGridPosition.y != _limitY)
-        {
-            nextDiagonalGridPosition += _direction;
-            diagonalGridPositions.Add(nextDiagonalGridPosition);
-        }
-        int index = Mathf.RoundToInt(diagonalGridPositions.Count / 2);
-        return diagonalGridPositions[index];
-    }
-
-    #endregion
 
     #region States
     public void ChangeState(State _state)
@@ -89,7 +77,6 @@ public class Character : Singleton<Character>
 
     private IEnumerator IdleState()
     {
-        Debug.Log("Idle");
         yield return new WaitForSeconds(3f);
 
         // Change State
@@ -98,9 +85,10 @@ public class Character : Singleton<Character>
 
     private IEnumerator SearchingState()
     {
-        Debug.Log("Searching");
         yield return new WaitForSeconds(1f);
 
+        nextPositionModel.gameObject.SetActive(true);
+        nextPositionModel.transform.position = transform.position;
         TargetLocator.Direction currentDirection;
         Vector2Int gridSize = AppManager.Instance.gridController.GridSize;
         Vector2Int min = Vector2Int.zero;
@@ -109,7 +97,8 @@ public class Character : Singleton<Character>
         {
             // Ask for direction
             currentDirection = TargetLocator.GetDirectionToTarget(currentGridPosition);
-            Debug.Log(currentDirection);
+            UIManager.Instance.mainUIController.AddDirection(currentGridPosition, currentDirection.ToString());
+            UIManager.Instance.mainUIController.SetCost(TargetLocator.Cost);
 
             if (currentDirection == TargetLocator.Direction.OnTarget)
                 break;
@@ -133,7 +122,6 @@ public class Character : Singleton<Character>
                     max = currentGridPosition + directionVector;
                     midX = min.x + ((max.x - min.x) / 2);
                 }
-
                 else if (currentDirection == TargetLocator.Direction.Down)
                 {
                     min = currentGridPosition + directionVector;
@@ -172,16 +160,20 @@ public class Character : Singleton<Character>
 
                 // Drop Nodes
                 AppManager.Instance.gridController.DropExcludedNodes(min, max, AppManager.Instance.gridController.GetWorldPosition(currentGridPosition));
+                AudioManager.Instance.PlaySound("DropNodes");
 
                 // Move to the next grid position using DOTween
                 currentGridPosition = new Vector2Int(midX, midY);
                 Vector3 nodeWorldPosition = AppManager.Instance.gridController.GetWorldPosition(currentGridPosition);
                 Vector3 characterWorldPosition = new Vector3(nodeWorldPosition.x, Y_POSITION, nodeWorldPosition.z);
                 float distance = Vector3.Distance(transform.position, characterWorldPosition);
-                float duration = distance * 0.5f;
+                float duration = distance * 0.25f;
                 transform.DOMove(characterWorldPosition, duration);
 
-                yield return new WaitForSeconds(duration + 1f);
+                // set next position model position
+                nextPositionModel.transform.position = characterWorldPosition;
+
+                yield return new WaitForSeconds(duration + 1.5f);
             }
         }
 
@@ -194,8 +186,40 @@ public class Character : Singleton<Character>
 
     private IEnumerator ReachedTargetState()
     {
-        Debug.Log("ReachedTarget");
-        yield return new WaitForSeconds(1f);
+        PlayVFX();
+        AudioManager.Instance.PlaySound("DropNodes");
+        AudioManager.Instance.PlaySound("Fireworks");
+        AudioManager.Instance.PlaySound("Cheers");
+        UIManager.Instance.mainUIController.EnableCredits();
+
+        yield return new WaitForSeconds(3f);
+
+        UIManager.Instance.mainUIController.EnableRestart();
+    }
+    #endregion
+
+    #region Grid Searching 
+
+    private Vector2Int GetNextDiagonalGridPosition(Vector2Int _start, int _limitX, int _limitY, Vector2Int _direction)
+    {
+        Vector2Int nextDiagonalGridPosition = _start;
+        List<Vector2Int> diagonalGridPositions = new List<Vector2Int>();
+        diagonalGridPositions.Add(nextDiagonalGridPosition);
+        while (nextDiagonalGridPosition.x != _limitX && nextDiagonalGridPosition.y != _limitY)
+        {
+            nextDiagonalGridPosition += _direction;
+            diagonalGridPositions.Add(nextDiagonalGridPosition);
+        }
+        int index = Mathf.RoundToInt(diagonalGridPositions.Count / 2);
+        return diagonalGridPositions[index];
+    }
+
+    #endregion
+
+    #region VFX
+    private void PlayVFX()
+    {
+        fireworkVFX.gameObject.SetActive(true);
     }
     #endregion
 

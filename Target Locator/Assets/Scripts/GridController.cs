@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -38,40 +37,19 @@ public class GridController
     public void CreateGrid(Vector2Int _gridSize)
     {
         GridSize = _gridSize;
-        grid = new Node[_gridSize.x, _gridSize.y]; // x = x, y = z
-
-        //AppManager.Instance.StartCoroutine(CreateGridEnumerator());
+        grid = new Node[_gridSize.x, _gridSize.y];
 
         for (int y = 0; y < GridSize.y; y++)
         {
             for (int x = 0; x < GridSize.x; x++)
             {
                 Vector3 nodeWorldPosition = GetWorldPosition(new Vector2Int(x, y));
-                GameObject newNodeGameObject = MonoBehaviour.Instantiate(AppManager.Instance.NodePrefab, new Vector3(nodeWorldPosition.x, nodeWorldPosition.y/*10f*/, nodeWorldPosition.z), Quaternion.identity);
+                GameObject newNodeGameObject = MonoBehaviour.Instantiate(AppManager.Instance.NodePrefab, new Vector3(nodeWorldPosition.x, nodeWorldPosition.y/*10f*/, nodeWorldPosition.z), Quaternion.identity, AppManager.Instance.NodesParent.transform);
                 Node newNode = newNodeGameObject.GetComponent<Node>();
                 newNode.worldPosition = nodeWorldPosition;
                 grid[x, y] = newNode;
             }
         }
-    }
-
-    private IEnumerator CreateGridEnumerator()
-    {
-        for (int y = 0; y < GridSize.y; y++)
-        {
-            for (int x = 0; x < GridSize.x; x++)
-            {
-                Vector3 nodeWorldPosition = GetWorldPosition(new Vector2Int(x, y));
-                GameObject newNodeGameObject = MonoBehaviour.Instantiate(AppManager.Instance.NodePrefab, new Vector3(nodeWorldPosition.x, nodeWorldPosition.y/*10f*/, nodeWorldPosition.z), Quaternion.identity);
-                Node newNode = newNodeGameObject.GetComponent<Node>();
-                newNode.worldPosition = nodeWorldPosition;
-                grid[x, y] = newNode;
-
-                yield return new WaitForSeconds(0f); //0.005f
-            }
-        }
-        
-        // Invoke event when finished creating
     }
 
     public Vector3 GetWorldPosition(Vector2Int _gridPosition) => new Vector3(_gridPosition.x + Node.RADIUS, Node.Y_POSITION, _gridPosition.y + Node.RADIUS);
@@ -101,11 +79,6 @@ public class GridController
                         grid[x, y].Drop(_current);
             }
         }
-    }
-
-    private void HighlightNode()
-    {
-
     }
     #endregion
 

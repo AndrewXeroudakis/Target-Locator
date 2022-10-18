@@ -12,7 +12,7 @@ public abstract class Singleton<T> : MonoBehaviour where T : Component
 		if (Instance == null)
 		{
 			Instance = this as T;
-			DontDestroyOnLoad(this);
+			//DontDestroyOnLoad(this);
 		}
 		else
 		{
